@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Easy-clip</title>
+  <style>
+    :root { font-family: Inter, system-ui, Arial, sans-serif; }
+    body { margin: 0; background: #f3f4f6; color: #111827; }
+    .container { max-width: 980px; margin: 24px auto; padding: 16px; }
+    .card { background: #fff; border-radius: 12px; padding: 16px; box-shadow: 0 8px 24px rgba(0,0,0,.07); margin-top: 12px; }
+    label { display:block; margin: 10px 0 6px; font-weight: 600; }
+    input, textarea { width: 100%; box-sizing: border-box; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px; font: inherit; }
+    textarea { resize: vertical; }
+    .button-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+    button { border: 0; border-radius: 8px; padding: 10px 14px; background: #2563eb; color: #fff; font-weight: 700; cursor: pointer; }
+    button:disabled { opacity: .6; cursor: not-allowed; }
+    .alert { margin-top: 12px; padding: 10px; border-radius: 8px; }
+    .error { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+    .success { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+    .result-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    video { width: 100%; max-height: 420px; background: #000; border-radius: 8px; }
+    @media (max-width: 800px) { .result-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <h1>Easy-clip</h1>
+    <p>Input banyak timestamp (1 baris = 1 clip), pilih mode output, lalu generate.</p>
+
+    <section class="card">
+      <label for="sourceUrl">Link video (YouTube/MP4)</label>
+      <input id="sourceUrl" placeholder="https://..." />
+
+      <label for="timestamps">Multiple timestamp</label>
+      <textarea id="timestamps" rows="6" placeholder="00:00:05 00:00:15&#10;00:01:00-00:01:20"></textarea>
+
+      <div class="button-row">
+        <button data-mode="horizontal">Generate Horizontal</button>
+        <button data-mode="vertical">Generate Vertical 9:16</button>
+        <button data-mode="both">Generate Both</button>
+      </div>
+
+      <div id="status"></div>
+    </section>
+
+    <section id="results"></section>
+  </main>
+
+  <script>
+    const sourceUrl = document.getElementById('sourceUrl');
+    const timestamps = document.getElementById('timestamps');
+    const statusBox = document.getElementById('status');
+    const results = document.getElementById('results');
+    const buttons = [...document.querySelectorAll('button[data-mode]')];
+
+    function setStatus(message, type = 'success') {
+      if (!message) {
+        statusBox.innerHTML = '';
+        return;
+      }
+      statusBox.innerHTML = `<div class="alert ${type}">${message}</div>`;
+    }
+
+    function b64ToBlobUrl(base64, mime) {
+      const byteChars = atob(base64);
+      const byteNumbers = new Array(byteChars.length);
+      for (let i = 0; i < byteChars.length; i++) byteNumbers[i] = byteChars.charCodeAt(i);
+      const blob = new Blob([new Uint8Array(byteNumbers)], { type: mime });
+      return URL.createObjectURL(blob);
+    }
+
+    function renderResults(items) {
+      results.innerHTML = '';
+      items.forEach((item) => {
+        const wrapper = document.createElement('section');
+        wrapper.className = 'card';
+
+        const blocks = [];
+        if (item.horizontal) {
+          const url = b64ToBlobUrl(item.horizontal.base64, item.horizontal.mime);
+          blocks.push(`<div><h4>Horizontal</h4><video controls src="${url}"></video><p><a href="${url}" download="${item.horizontal.filename}">Download</a></p></div>`);
+        }
+        if (item.vertical) {
+          const url = b64ToBlobUrl(item.vertical.base64, item.vertical.mime);
+          blocks.push(`<div><h4>Vertical 9:16</h4><video controls src="${url}"></video><p><a href="${url}" download="${item.vertical.filename}">Download</a></p></div>`);
+        }
+
+        wrapper.innerHTML = `<h3>${item.label}</h3><div class="result-grid">${blocks.join('')}</div>`;
+        results.appendChild(wrapper);
+      });
+    }
+
+    async function generate(mode) {
+      const body = {
+        sourceUrl: sourceUrl.value.trim(),
+        timestamps: timestamps.value,
+        mode,
+      };
+
+      buttons.forEach((btn) => { btn.disabled = true; });
+      setStatus('Processing...', 'success');
+      results.innerHTML = '';
+
+      try {
+        const res = await fetch('/api/index', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Gagal generate clip');
+
+        setStatus(`Berhasil generate ${data.count} clip (${data.mode})`, 'success');
+        renderResults(data.items || []);
+      } catch (err) {
+        setStatus(err.message, 'error');
+      } finally {
+        buttons.forEach((btn) => { btn.disabled = false; });
+      }
+    }
+
+    buttons.forEach((btn) => {
+      btn.addEventListener('click', () => generate(btn.dataset.mode));
+    });
+  </script>
+</body>
+</html>
