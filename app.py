@@ -204,6 +204,8 @@ class Handler(BaseHTTPRequestHandler):
                 end,
                 "--outdir",
                 str(outdir),
+                "--mode",
+                mode,
             ]
 
             proc = subprocess.run(cmd, cwd=ROOT, text=True, capture_output=True)
@@ -214,11 +216,13 @@ class Handler(BaseHTTPRequestHandler):
 
             horizontal = f"/outputs/{job_id}/segment-{idx:02d}/clip-horizontal.mp4"
             vertical = f"/outputs/{job_id}/segment-{idx:02d}/clip-vertical-9x16.mp4"
+            horizontal_file = outdir / "clip-horizontal.mp4"
+            vertical_file = outdir / "clip-vertical-9x16.mp4"
             items.append(
                 {
                     "label": f"Segment {idx}: {start} - {end}",
-                    "horizontal": horizontal if mode in {"horizontal", "both"} else "",
-                    "vertical": vertical if mode in {"vertical", "both"} else "",
+                    "horizontal": horizontal if horizontal_file.exists() else "",
+                    "vertical": vertical if vertical_file.exists() else "",
                 }
             )
 

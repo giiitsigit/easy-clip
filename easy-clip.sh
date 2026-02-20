@@ -6,7 +6,7 @@ usage() {
 Easy-clip: clip video dari URL YouTube/MP4 atau file lokal.
 
 Usage:
-  ./easy-clip.sh --input <youtube_or_mp4_or_local_file> --start HH:MM:SS --end HH:MM:SS [--outdir ./output]
+  ./easy-clip.sh --input <youtube_or_mp4_or_local_file> --start HH:MM:SS --end HH:MM:SS [--mode horizontal|vertical|both] [--outdir ./output]
 
 Output:
   <outdir>/clip-horizontal.mp4
@@ -84,6 +84,7 @@ INPUT=""
 START=""
 END=""
 OUTDIR="./output"
+MODE="both"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -101,6 +102,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --outdir)
       OUTDIR="${2:-}"
+      shift 2
+      ;;
+    --mode)
+      MODE="${2:-}"
       shift 2
       ;;
     -h|--help)
@@ -136,6 +141,11 @@ if ((END_SEC <= START_SEC)); then
   exit 1
 fi
 
+if [[ "$MODE" != "horizontal" && "$MODE" != "vertical" && "$MODE" != "both" ]]; then
+  echo "Error: mode harus horizontal|vertical|both." >&2
+  exit 1
+fi
+
 require_cmd ffmpeg
 
 mkdir -p "$OUTDIR"
@@ -144,16 +154,20 @@ trap 'rm -rf "$WORKDIR"' EXIT
 
 SOURCE_FILE=$(download_source "$INPUT" "$WORKDIR")
 
-ffmpeg -y -ss "$START" -to "$END" -i "$SOURCE_FILE" \
-  -map 0:v:0 -map 0:a? -c:v libx264 -c:a aac -movflags +faststart \
-  "$OUTDIR/clip-horizontal.mp4" >/dev/null 2>&1
-
-ffmpeg -y -ss "$START" -to "$END" -i "$SOURCE_FILE" \
-  -map 0:v:0 -map 0:a? \
-  -vf "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920" \
-  -c:v libx264 -c:a aac -movflags +faststart \
-  "$OUTDIR/clip-vertical-9x16.mp4" >/dev/null 2>&1
-
 echo "Selesai. Hasil clip:"
-echo "- $OUTDIR/clip-horizontal.mp4"
-echo "- $OUTDIR/clip-vertical-9x16.mp4"
+
+if [[ "$MODE" == "horizontal" || "$MODE" == "both" ]]; then
+  ffmpeg -y -ss "$START" -to "$END" -i "$SOURCE_FILE" \
+    -map 0:v:0 -map 0:a? -c:v libx264 -c:a aac -movflags +faststart \
+    "$OUTDIR/clip-horizontal.mp4" >/dev/null 2>&1
+  echo "- $OUTDIR/clip-horizontal.mp4"
+fi
+
+if [[ "$MODE" == "vertical" || "$MODE" == "both" ]]; then
+  ffmpeg -y -ss "$START" -to "$END" -i "$SOURCE_FILE" \
+    -map 0:v:0 -map 0:a? \
+    -vf "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920" \
+    -c:v libx264 -c:a aac -movflags +faststart \
+    "$OUTDIR/clip-vertical-9x16.mp4" >/dev/null 2>&1
+  echo "- $OUTDIR/clip-vertical-9x16.mp4"
+fi

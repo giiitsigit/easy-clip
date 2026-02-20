@@ -32,5 +32,8 @@ Hasil clip akan disimpan ke folder `web_outputs/<job_id>/segment-xx/`.
 
 ## CLI (opsional)
 ```bash
-./easy-clip.sh --input "https://www.youtube.com/watch?v=..." --start 00:00:10 --end 00:00:35 --outdir ./hasil
+./easy-clip.sh --input "https://www.youtube.com/watch?v=..." --start 00:00:10 --end 00:00:35 --mode both --outdir ./hasil
 ```
+
+
+Mode CLI tersedia: `horizontal`, `vertical`, `both` (default: `both`).
