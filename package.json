@@ -1,0 +1,17 @@
+{
+  "name": "easy-clip",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Easy-clip Vercel serverless app",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "vercel dev",
+    "start": "vercel dev"
+  },
+  "dependencies": {
+    "ffmpeg-static": "^5.2.0",
+    "ytdl-core": "^4.11.5"
+  }
+}
